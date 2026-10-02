@@ -309,10 +309,18 @@
   const groupOrder = ['projectile', 'static', 'modifier', 'multicast', 'material', 'utility', 'other', 'passive'];
   const groupName = { projectile: 'Projectiles', static: 'Static projectiles', modifier: 'Modifiers', multicast: 'Multicasts', material: 'Materials', utility: 'Utility', other: 'Other', passive: 'Passive' };
   const label = s => s.name + (APPROX.has(s.id) ? ' ~' : '') + (s.custom ? ' (custom)' : '');
+  // Search: every query word must match a word in the spell's name or internal id,
+  // in any order, allowing partial words ("orbiting nuke" finds "Nuke Orbit").
+  const words = s => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  function matches(s, query) {
+    const q = words(query || '');
+    if (!q.length) return true;
+    const hay = [...words(s.name), ...words(s.id)];
+    return q.every(w => hay.some(t => t.startsWith(w) || (t.length >= 4 && w.startsWith(t))));
+  }
   function optionsHtml(sel, filter, withNone) {
-    const q = (filter || '').trim().toLowerCase();
     return (withNone ? `<option value="">None</option>` : '') + groupOrder.map(g => {
-      const list = SPELLS.filter(s => s.g === g && (!q || s.name.toLowerCase().includes(q) || s.id === sel)).sort((x, y) => x.name.localeCompare(y.name));
+      const list = SPELLS.filter(s => s.g === g && (matches(s, filter) || s.id === sel)).sort((x, y) => x.name.localeCompare(y.name));
       if (!list.length) return '';
       return `<optgroup label="${groupName[g]}">` + list.map(s => `<option value="${esc(s.id)}"${s.id === sel ? ' selected' : ''}>${esc(label(s))}</option>`).join('') + '</optgroup>';
     }).join('');
@@ -323,15 +331,43 @@
     sel.innerHTML = optionsHtml(null, document.getElementById('addFind').value);
     if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
   }
+  // Optional spell icons: put the game's gun_actions PNGs in img/spells/ (see README).
+  // Icons that fail to load once are remembered so they aren't requested again.
+  const ICON_DIR = 'img/spells/';
+  const missingIcons = new Set();
+  window.__wandIconFail = img => { missingIcons.add(img.dataset.icon); img.remove(); };
+  const iconHtml = sp => {
+    const name = sp.icon || sp.id.toLowerCase();
+    if (sp.custom || missingIcons.has(name)) return '';
+    return `<img src="${ICON_DIR}${esc(name)}.png" data-icon="${esc(name)}" alt="" onerror="__wandIconFail(this)">`;
+  };
+  let selSlot = -1;
   function renderSlots() {
     state.slots = state.slots.filter(id => byId[id]);
+    if (selSlot >= state.slots.length) selSlot = state.slots.length - 1;
     document.getElementById('slots').innerHTML = state.slots.map((id, i) => {
       const sp = byId[id];
-      return `<li><span class="num">${i + 1}</span><span class="swatch t-${sp.g}"></span>
-        <select id="slot-${i}" data-i="${i}" aria-label="Slot ${i + 1}">${optionsHtml(id)}</select>
-        <span class="btns"><button data-up="${i}" aria-label="Move slot ${i + 1} up">↑</button><button data-down="${i}" aria-label="Move slot ${i + 1} down">↓</button><button data-del="${i}" aria-label="Remove slot ${i + 1}">✕</button></span></li>`;
-    }).join('') || '<li class="empty">No spells yet.</li>';
+      const lim = sp.uses != null && sp.uses >= 0 && (!state.unlimited || sp.nu);
+      return `<li><button type="button" class="slot t-${sp.g}${i === selSlot ? ' sel' : ''}" draggable="true" data-slot="${i}" aria-pressed="${i === selSlot}" title="${esc(`Slot ${i + 1}: ${sp.name} (${groupName[sp.g] || sp.g}, ${sp.mana} mana)`)}">
+        <span class="sn">${i + 1}</span>${lim ? `<span class="su">${sp.uses}</span>` : ''}${iconHtml(sp)}<span class="tn">${esc(label(sp))}</span></button></li>`;
+    }).join('') + `<li><button type="button" class="slot add" id="slotAdd" title="Add a spell" aria-label="Add a spell">+</button></li>`;
+    document.getElementById('slotCount').textContent = `${state.slots.length} slot${state.slots.length === 1 ? '' : 's'} · drag to reorder, click to edit`;
+    renderSlotEdit();
     renderAdd();
+  }
+  function renderSlotEdit() {
+    const box = document.getElementById('slotEdit');
+    if (selSlot < 0 || !state.slots[selSlot]) { box.innerHTML = state.slots.length ? 'Click a slot to replace, move or remove it.' : 'No spells yet. Search below to add one.'; return; }
+    const i = selSlot;
+    box.innerHTML = `<span>Slot ${i + 1}</span>
+      <select id="slotReplace" aria-label="Spell in slot ${i + 1}">${optionsHtml(state.slots[i])}</select>
+      <span class="btns"><button data-move="-1" aria-label="Move slot ${i + 1} left">←</button><button data-move="1" aria-label="Move slot ${i + 1} right">→</button><button data-del="1" aria-label="Remove slot ${i + 1}">Remove</button><button data-desel="1" aria-label="Done editing">Done</button></span>`;
+  }
+  function moveSlot(from, to) {
+    const s = state.slots;
+    if (from === to || from < 0 || to < 0 || from >= s.length || to > s.length) return;
+    const [id] = s.splice(from, 1);
+    s.splice(to > from ? to - 1 : to, 0, id);
   }
   function renderAcs() {
     document.getElementById('acs').innerHTML = state.ac.map((id, i) => `<select id="ac-${i}" data-ac="${i}" aria-label="Always cast ${i + 1}">${optionsHtml(id && byId[id] ? id : '', '', true)}</select>`).join('');
@@ -339,8 +375,8 @@
   const unlockName = s => s ? s.replace('card_unlocked_', '').replace(/_/g, ' ') : '';
   function renderLib() {
     const t = document.getElementById('libTable');
-    const q = document.getElementById('libFind').value.trim().toLowerCase();
-    const rows = SPELLS.filter(s => !q || s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q));
+    const q = document.getElementById('libFind').value;
+    const rows = SPELLS.filter(s => matches(s, q));
     t.innerHTML = `<tr><th>Spell</th><th>Type</th><th>Mana</th><th>Cast delay (s)</th><th>Recharge (s)</th><th>Spread</th><th>Speed ×</th><th>Draws</th><th>Uses</th><th>Projectile</th><th>Unlock</th><th>Notes</th></tr>` +
       rows.map(s => {
         const ro = HANDLED.has(s.id) || s.custom;
@@ -375,24 +411,71 @@
     document.getElementById(id).addEventListener('input', e => { const v = parseFloat(e.target.value); state.wand[k] = isNaN(v) ? 0 : v; renderResults(); save(); });
   });
   document.getElementById('w-shuffle').addEventListener('change', e => { state.wand.shuffle = e.target.value; renderResults(); save(); });
-  document.getElementById('unl').addEventListener('change', e => { state.unlimited = e.target.checked; renderResults(); save(); });
+  document.getElementById('unl').addEventListener('change', e => { state.unlimited = e.target.checked; refresh(); });
   [['c-enemy', 'enemy'], ['c-projectile', 'projectile'], ['c-hp', 'hp']].forEach(([id, k]) => document.getElementById(id).addEventListener('change', e => { state.conds[k] = e.target.checked; renderResults(); save(); }));
   document.getElementById('acs').addEventListener('change', e => { if (e.target.dataset.ac != null) { state.ac[+e.target.dataset.ac] = e.target.value; renderResults(); save(); } });
-  document.getElementById('slots').addEventListener('change', e => { if (e.target.dataset.i != null) { state.slots[+e.target.dataset.i] = e.target.value; refresh(); } });
-  document.getElementById('slots').addEventListener('click', e => {
+  // Slot tiles: click to select, drag to reorder.
+  const slotsEl = document.getElementById('slots');
+  let dragFrom = -1;
+  slotsEl.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    const s = state.slots;
-    if (b.dataset.up != null) { const i = +b.dataset.up; if (i > 0) [s[i - 1], s[i]] = [s[i], s[i - 1]]; }
-    else if (b.dataset.down != null) { const i = +b.dataset.down; if (i < s.length - 1) [s[i + 1], s[i]] = [s[i], s[i + 1]]; }
-    else if (b.dataset.del != null) s.splice(+b.dataset.del, 1);
+    if (b.id === 'slotAdd') { document.getElementById('addFind').focus(); return; }
+    const i = +b.dataset.slot;
+    selSlot = selSlot === i ? -1 : i;
+    renderSlots();
+    const again = slotsEl.querySelector(`[data-slot="${i}"]`); if (again) again.focus();
+  });
+  slotsEl.addEventListener('dragstart', e => {
+    const b = e.target.closest('[data-slot]'); if (!b) return;
+    dragFrom = +b.dataset.slot;
+    b.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', String(dragFrom)); } catch (err) {}
+  });
+  slotsEl.addEventListener('dragover', e => {
+    if (dragFrom < 0) return;
+    e.preventDefault();
+    slotsEl.querySelectorAll('.over').forEach(x => x.classList.remove('over'));
+    const b = e.target.closest('.slot'); if (b) b.classList.add('over');
+  });
+  slotsEl.addEventListener('dragleave', e => { const b = e.target.closest('.slot'); if (b) b.classList.remove('over'); });
+  slotsEl.addEventListener('drop', e => {
+    if (dragFrom < 0) return;
+    e.preventDefault();
+    const b = e.target.closest('.slot');
+    const to = !b || b.id === 'slotAdd' ? state.slots.length : +b.dataset.slot;
+    moveSlot(dragFrom, to);
+    const newIdx = to > dragFrom ? to - 1 : to;
+    if (selSlot === dragFrom) selSlot = newIdx;
+    else if (selSlot >= 0) { let k = selSlot - (selSlot > dragFrom ? 1 : 0); if (k >= newIdx) k++; selSlot = k; }
+    dragFrom = -1;
     refresh();
   });
-  document.getElementById('addBtn').addEventListener('click', () => { const v = document.getElementById('addSel').value; if (v) { state.slots.push(v); refresh(); } });
+  slotsEl.addEventListener('dragend', () => { dragFrom = -1; slotsEl.querySelectorAll('.dragging, .over').forEach(x => x.classList.remove('dragging', 'over')); });
+
+  // Editor for the selected slot.
+  const editEl = document.getElementById('slotEdit');
+  editEl.addEventListener('change', e => { if (e.target.id === 'slotReplace' && selSlot >= 0) { state.slots[selSlot] = e.target.value; refresh(); } });
+  editEl.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || selSlot < 0) return;
+    if (b.dataset.move) {
+      const to = selSlot + +b.dataset.move;
+      if (to >= 0 && to < state.slots.length) { [state.slots[selSlot], state.slots[to]] = [state.slots[to], state.slots[selSlot]]; selSlot = to; }
+    } else if (b.dataset.del) { state.slots.splice(selSlot, 1); selSlot = Math.min(selSlot, state.slots.length - 1); }
+    else if (b.dataset.desel) selSlot = -1;
+    refresh();
+  });
+  document.getElementById('addBtn').addEventListener('click', () => {
+    const v = document.getElementById('addSel').value; if (!v) return;
+    if (selSlot >= 0) { state.slots.splice(selSlot + 1, 0, v); selSlot++; } else state.slots.push(v);
+    refresh();
+  });
+  document.getElementById('addFind').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('addBtn').click(); });
   document.getElementById('addFind').addEventListener('input', renderAdd);
   document.getElementById('libFind').addEventListener('input', renderLib);
-  document.getElementById('pTele').addEventListener('click', () => { state.slots = TELE.slice(); refresh(); });
-  document.getElementById('pDiv').addEventListener('click', () => { state.slots = DIVEX.slice(); refresh(); });
-  document.getElementById('pClear').addEventListener('click', () => { state.slots = []; refresh(); });
+  document.getElementById('pTele').addEventListener('click', () => { state.slots = TELE.slice(); selSlot = -1; refresh(); });
+  document.getElementById('pDiv').addEventListener('click', () => { state.slots = DIVEX.slice(); selSlot = -1; refresh(); });
+  document.getElementById('pClear').addEventListener('click', () => { state.slots = []; selSlot = -1; refresh(); });
   document.getElementById('libTable').addEventListener('change', e => {
     const el = e.target; if (el.dataset.l == null) return;
     const id = el.dataset.l, k = el.dataset.k, v = parseFloat(el.value);

@@ -98,6 +98,8 @@ for e in entries:
     if mu is not None: sp['uses'] = int(float(mu))
     if re.search(r'\bnever_unlimited\s*=\s*true', e): sp['neverUnlimited'] = True
     if re.search(r'\brecursive\s*=\s*true', e): sp['recursive'] = True
+    spr = g(r'\bsprite\s*=\s*"([^"]+)"')
+    if spr: sp['sprite'] = os.path.splitext(os.path.basename(spr))[0]
     fl = g(r'\bspawn_requires_flag\s*=\s*"([a-z0-9_]+)"')
     if fl: sp['unlock'] = fl
     rp = re.search(r'related_projectiles\s*=\s*\{([^}]*)\}', e)
@@ -259,6 +261,7 @@ for s in spells:
     o = {'id': s['id'], 'name': s['name'], 'g': s['group'], 'mana': num(s['mana'])}
     for k_src, k in [('uses', 'uses'), ('unlock', 'unlock'), ('relatedCount', 'rc')]:
         if k_src in s: o[k] = s[k_src]
+    if s.get('sprite') and s['sprite'] != s['id'].lower(): o['icon'] = s['sprite']
     if s.get('neverUnlimited'): o['nu'] = 1
     if s.get('recursive'): o['rec'] = 1
     if s.get('related'): o['rel'] = [sh(x) for x in s['related']]

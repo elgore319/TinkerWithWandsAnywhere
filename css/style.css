@@ -179,3 +179,47 @@ td .nm { border-left: 3px solid var(--c); padding-left: 6px; }
 .warnbox { border: 1px solid var(--other); color: var(--fg); border-radius: 3px; padding: 8px 12px; margin-top: 12px; font-size: 14px; }
 .warnbox b { color: var(--other); }
 
+
+/* ---------- wand menu (top of page) ---------- */
+header p { font-size: 14px; }
+.wandmenu { display: grid; grid-template-columns: minmax(220px, 260px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .wandmenu { grid-template-columns: minmax(0, 1fr); } }
+.wm-stats { border-right: 1px solid var(--line); padding-right: 20px; min-width: 0; }
+@media (max-width: 760px) { .wm-stats { border-right: 0; padding-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 16px; } }
+.statlist { display: flex; flex-direction: column; gap: 4px; }
+label.st { display: grid; grid-template-columns: minmax(0, 1fr) 96px; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+label.st input, label.st select { padding: 3px 6px; font-size: 13px; }
+.wm-stats .acs { grid-template-columns: 1fr; gap: 4px; }
+.wm-stats .acs select { padding: 3px 6px; font-size: 13px; }
+.wm-slots { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.wm-head { display: flex; align-items: baseline; gap: 12px; }
+.wm-head h2 { margin: 0; }
+
+ol.slotrow { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.slot {
+  position: relative; width: 78px; height: 78px; padding: 16px 5px 5px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  background: var(--bg); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 2px;
+  font: inherit; font-size: 11px; line-height: 1.15; color: var(--fg); text-align: center; cursor: grab; user-select: none;
+}
+.slot:hover { border-color: var(--muted); border-top-color: var(--c); }
+.slot.sel { border-color: var(--gold); border-top-color: var(--c); box-shadow: 0 0 0 1px var(--gold); }
+.slot.dragging { opacity: 0.4; }
+.slot.over { box-shadow: -4px 0 0 0 var(--gold); }
+.slot .sn { position: absolute; top: 2px; left: 4px; font-family: var(--display); font-size: 10px; color: var(--muted); }
+.slot .su { position: absolute; top: 2px; right: 4px; font-family: var(--mono); font-size: 10px; color: var(--other); }
+.slot .tn { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.slot img { width: 32px; height: 32px; image-rendering: pixelated; }
+.slot img + .tn { -webkit-line-clamp: 1; font-size: 10px; color: var(--muted); }
+.slot.add { border-style: dashed; border-top: 1px dashed var(--line); color: var(--muted); font-size: 24px; cursor: pointer; padding: 0; }
+.slot.add:hover { color: var(--gold); border-color: var(--gold); }
+
+.slotedit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 34px; font-size: 13px; color: var(--muted); }
+.slotedit select { flex: 1 1 220px; width: auto; }
+.slotedit .btns button { padding: 5px 10px; }
+.addbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 8px; }
+@media (max-width: 560px) { .addbar { grid-template-columns: minmax(0, 1fr) auto; } .addbar input { grid-column: 1 / -1; } }
+.wm-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 20px; align-items: center; }
+.wm-foot .presets { margin: 0; }
+.wm-foot .checks { flex-direction: row; flex-wrap: wrap; gap: 6px 16px; margin: 0; }
+.wandmenu .legend { margin: 0; }
+.results { margin-top: 20px; }

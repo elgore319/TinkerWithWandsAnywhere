@@ -12,11 +12,15 @@ Open `index.html` in a browser. No build step or server is needed.
 | `css/style.css` | All styling. |
 | `js/gamedata.js` | Spell and projectile data (generated, don't edit by hand). Defines `GAME_SPELLS` and `GAME_PROJ`. |
 | `js/engine.js` | The draw engine. `makeEngine(spells, projectiles).simulate(options)` runs one recharge cycle and returns the call tree, every stat change as a labeled term, and the per-shot results. Also defines the special-spell tables (`HANDLED`, `RANDOM_NOTE`). |
-| `js/app.js` | The UI: wand inputs, slots, equation rendering, the Spell stats table, saving to browser storage. |
+| `js/app.js` | The UI: wand stats, the slot row (click to edit, drag to reorder), equation rendering, the Spell stats table, saving to browser storage. |
 | `tools/build_data.py` | Regenerates `js/gamedata.js` from the game's files. |
 | `tests/engine.test.js` | Checks the engine against known wand behavior. |
 
 Scripts are plain (non-module) files so the page also works when opened straight from disk.
+
+## Spell icons (optional)
+
+Slots show the spell name by default. To show the game's spell icons instead, copy the PNGs from the game's `data/ui_gfx/gun_actions/` folder (from an unpacked `data.wak`) into `img/spells/`, keeping their file names. Each spell's icon name is its `icon` field in `js/gamedata.js`, or its id in lowercase when there's no `icon` field. Missing icons fall back to the name.
 
 ## Spell data
 

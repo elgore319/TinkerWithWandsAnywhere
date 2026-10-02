@@ -8,63 +8,66 @@
 <div class="wrap">
   <header>
     <h1>Wand Calculator</h1>
-    <p>Put spells in slots and see every cast written out as equations: cast delay, recharge, mana, spread, speed, lifetime, distance and damage, with the slot number under each term. Parentheses are multicasts, brackets are trigger payloads, braces are copies made by spells like Divide By and the Greek letters.</p>
+    <p>Every cast written out as equations, with the slot number under each term. ( ) multicasts, [ ] trigger payloads, { } copies from Divide By and the Greek letters.</p>
   </header>
 
-  <div class="grid">
-    <div class="col">
-      <section class="panel">
-        <h2>Wand</h2>
-        <div class="fields">
-          <label class="f">Spells/cast<input type="number" id="w-spc" min="1" max="26" step="1"></label>
-          <label class="f">Cast delay (s)<input type="number" id="w-cd" step="0.01"></label>
-          <label class="f">Recharge (s)<input type="number" id="w-rt" step="0.01"></label>
-          <label class="f">Max mana<input type="number" id="w-max" step="1" min="0"></label>
-          <label class="f">Mana charge (/s)<input type="number" id="w-regen" step="1" min="0"></label>
-          <label class="f">Spread (°)<input type="number" id="w-spread" step="0.1"></label>
-          <label class="f">Speed multiplier (×)<input type="number" id="w-mult" step="0.01" min="0"></label>
-          <label class="f">Shuffle<select id="w-shuffle"><option value="no">No</option><option value="yes">Yes (not modeled)</option></select></label>
-        </div>
-        <div class="sub">Always casts</div>
-        <div class="acs" id="acs"></div>
-        <div class="sub">Conditions</div>
-        <div class="checks">
-          <label><input type="checkbox" id="unl"> Unlimited Spells perk</label>
-          <label><input type="checkbox" id="c-enemy"> 15+ enemies nearby (Requirement - Enemies)</label>
-          <label><input type="checkbox" id="c-projectile"> 20+ projectiles nearby (Requirement - Projectiles)</label>
-          <label><input type="checkbox" id="c-hp"> HP at or below 25% (Requirement - Low Health)</label>
-        </div>
-      </section>
-
-      <section class="panel">
-        <h2>Spells</h2>
-        <ol class="slots" id="slots"></ol>
-        <input type="text" id="addFind" placeholder="Search 393 spells…" aria-label="Search spells to add" style="margin-top:12px">
-        <div class="addrow">
-          <select id="addSel" aria-label="Spell to add"></select>
-          <button class="primary" id="addBtn">Add slot</button>
-        </div>
-        <div class="presets">
-          <button id="pTele">Load teleport hop build</button>
-          <button id="pDiv">Load Divide By example</button>
-          <button id="pClear">Clear slots</button>
-        </div>
-        <div class="legend">
-          <span class="t-projectile"><i></i>Projectile</span>
-          <span class="t-static"><i></i>Static</span>
-          <span class="t-modifier"><i></i>Modifier</span>
-          <span class="t-multicast"><i></i>Multicast</span>
-          <span class="t-material"><i></i>Material</span>
-          <span class="t-utility"><i></i>Utility</span>
-          <span class="t-other"><i></i>Other</span>
-          <span class="t-passive"><i></i>Passive</span>
-        </div>
-        <p class="hint">~ marks spells with a random or player-dependent part (random spells, Blood Magic and similar). Their fixed costs are counted; the random part is listed under the cast.</p>
-      </section>
+  <section class="panel wandmenu" aria-label="Wand">
+    <div class="wm-stats">
+      <h2>Wand</h2>
+      <div class="statlist">
+        <label class="st">Shuffle<select id="w-shuffle"><option value="no">No</option><option value="yes">Yes (not modeled)</option></select></label>
+        <label class="st">Spells/cast<input type="number" id="w-spc" min="1" max="26" step="1"></label>
+        <label class="st">Cast delay (s)<input type="number" id="w-cd" step="0.01"></label>
+        <label class="st">Recharge (s)<input type="number" id="w-rt" step="0.01"></label>
+        <label class="st">Max mana<input type="number" id="w-max" step="1" min="0"></label>
+        <label class="st">Mana charge (/s)<input type="number" id="w-regen" step="1" min="0"></label>
+        <label class="st">Spread (°)<input type="number" id="w-spread" step="0.1"></label>
+        <label class="st">Speed ×<input type="number" id="w-mult" step="0.01" min="0"></label>
+      </div>
+      <div class="sub">Always casts</div>
+      <div class="acs" id="acs"></div>
     </div>
 
-    <section class="col" id="results"></section>
-  </div>
+    <div class="wm-slots">
+      <div class="wm-head">
+        <h2>Spells</h2>
+        <span class="note" id="slotCount"></span>
+      </div>
+      <ol class="slotrow" id="slots" aria-label="Spell slots, in cast order"></ol>
+      <div class="slotedit" id="slotEdit"></div>
+      <div class="addbar">
+        <input type="text" id="addFind" placeholder="Search 393 spells…" aria-label="Search spells to add">
+        <select id="addSel" aria-label="Spell to add"></select>
+        <button class="primary" id="addBtn">Add slot</button>
+      </div>
+      <div class="wm-foot">
+        <div class="presets">
+          <button id="pTele">Teleport hop build</button>
+          <button id="pDiv">Divide By example</button>
+          <button id="pClear">Clear slots</button>
+        </div>
+        <div class="checks">
+          <label><input type="checkbox" id="unl"> Unlimited Spells</label>
+          <label><input type="checkbox" id="c-enemy"> 15+ enemies near</label>
+          <label><input type="checkbox" id="c-projectile"> 20+ projectiles near</label>
+          <label><input type="checkbox" id="c-hp"> HP ≤ 25%</label>
+        </div>
+      </div>
+      <div class="legend">
+        <span class="t-projectile"><i></i>Projectile</span>
+        <span class="t-static"><i></i>Static</span>
+        <span class="t-modifier"><i></i>Modifier</span>
+        <span class="t-multicast"><i></i>Multicast</span>
+        <span class="t-material"><i></i>Material</span>
+        <span class="t-utility"><i></i>Utility</span>
+        <span class="t-other"><i></i>Other</span>
+        <span class="t-passive"><i></i>Passive</span>
+        <span>~ random or player-dependent part</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="col results" id="results"></section>
 
   <details class="panel" id="lib" style="margin-top:20px">
     <summary>Spell stats</summary>
