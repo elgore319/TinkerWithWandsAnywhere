@@ -1,0 +1,108 @@
+<meta charset="utf-8">
+<title>Noita Wand Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+
+<div class="wrap">
+  <header>
+    <h1>Wand Calculator</h1>
+    <p>Put spells in slots and see every cast written out as equations: cast delay, recharge, mana, spread, speed, lifetime, distance and damage, with the slot number under each term. Parentheses are multicasts, brackets are trigger payloads, braces are copies made by spells like Divide By and the Greek letters.</p>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel">
+        <h2>Wand</h2>
+        <div class="fields">
+          <label class="f">Spells/cast<input type="number" id="w-spc" min="1" max="26" step="1"></label>
+          <label class="f">Cast delay (s)<input type="number" id="w-cd" step="0.01"></label>
+          <label class="f">Recharge (s)<input type="number" id="w-rt" step="0.01"></label>
+          <label class="f">Max mana<input type="number" id="w-max" step="1" min="0"></label>
+          <label class="f">Mana charge (/s)<input type="number" id="w-regen" step="1" min="0"></label>
+          <label class="f">Spread (°)<input type="number" id="w-spread" step="0.1"></label>
+          <label class="f">Speed multiplier (×)<input type="number" id="w-mult" step="0.01" min="0"></label>
+          <label class="f">Shuffle<select id="w-shuffle"><option value="no">No</option><option value="yes">Yes (not modeled)</option></select></label>
+        </div>
+        <div class="sub">Always casts</div>
+        <div class="acs" id="acs"></div>
+        <div class="sub">Conditions</div>
+        <div class="checks">
+          <label><input type="checkbox" id="unl"> Unlimited Spells perk</label>
+          <label><input type="checkbox" id="c-enemy"> 15+ enemies nearby (Requirement - Enemies)</label>
+          <label><input type="checkbox" id="c-projectile"> 20+ projectiles nearby (Requirement - Projectiles)</label>
+          <label><input type="checkbox" id="c-hp"> HP at or below 25% (Requirement - Low Health)</label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Spells</h2>
+        <ol class="slots" id="slots"></ol>
+        <input type="text" id="addFind" placeholder="Search 393 spells…" aria-label="Search spells to add" style="margin-top:12px">
+        <div class="addrow">
+          <select id="addSel" aria-label="Spell to add"></select>
+          <button class="primary" id="addBtn">Add slot</button>
+        </div>
+        <div class="presets">
+          <button id="pTele">Load teleport hop build</button>
+          <button id="pDiv">Load Divide By example</button>
+          <button id="pClear">Clear slots</button>
+        </div>
+        <div class="legend">
+          <span class="t-projectile"><i></i>Projectile</span>
+          <span class="t-static"><i></i>Static</span>
+          <span class="t-modifier"><i></i>Modifier</span>
+          <span class="t-multicast"><i></i>Multicast</span>
+          <span class="t-material"><i></i>Material</span>
+          <span class="t-utility"><i></i>Utility</span>
+          <span class="t-other"><i></i>Other</span>
+          <span class="t-passive"><i></i>Passive</span>
+        </div>
+        <p class="hint">~ marks spells with a random or player-dependent part (random spells, Blood Magic and similar). Their fixed costs are counted; the random part is listed under the cast.</p>
+      </section>
+    </div>
+
+    <section class="col" id="results"></section>
+  </div>
+
+  <details class="panel" id="lib" style="margin-top:20px">
+    <summary>Spell stats</summary>
+    <p class="hint">All 393 spells, including unlockables, read from the game's own spell and projectile files. Edit mana, cast delay or recharge if a patch changed them. Spells whose behavior is handled by special rules (Divide By, Greek letters, Requirements, Add Trigger and so on) show their stats read-only.</p>
+    <input type="text" id="libFind" placeholder="Filter by name…" aria-label="Filter spells" style="margin-top:12px;max-width:320px">
+    <div class="tablewrap"><table id="libTable"></table></div>
+    <h3 style="margin-top:16px">Add a custom spell</h3>
+    <div class="custom">
+      <label class="f">Name<input type="text" id="c-name" placeholder="e.g. Modded bolt"></label>
+      <label class="f">Type<select id="c-type"><option value="projectile">Projectile</option><option value="modifier">Modifier</option><option value="multicast">Multicast</option><option value="trigger">Trigger projectile</option></select></label>
+      <label class="f">Draws<input type="number" id="c-draws" value="1" min="1" step="1"></label>
+      <label class="f">Mana<input type="number" id="c-mana" value="0" step="1"></label>
+      <label class="f">Cast delay (s)<input type="number" id="c-cd" value="0" step="0.01"></label>
+      <label class="f">Recharge (s)<input type="number" id="c-rt" value="0" step="0.01"></label>
+      <label class="f">Speed (px/s)<input type="number" id="c-speed" value="600" step="1"></label>
+      <label class="f">Lifetime (frames)<input type="number" id="c-life" value="40" step="1"></label>
+      <button class="primary" id="c-add">Add spell</button>
+    </div>
+    <button id="resetLib" style="margin-top:14px">Reset edits and remove custom spells</button>
+  </details>
+
+  <section class="panel" style="margin-top:20px">
+    <h2>Rules this calculator uses</h2>
+    <ul class="rules">
+      <li>The draw engine follows the game's wand rules: cards move from the deck to the hand to the discard pile, modifiers draw one more card, multicasts draw several, and triggers start a new shot that draws its own payload.</li>
+      <li>Wrapping: when a modifier, multicast or trigger needs a card and the deck is empty, the discard pile (spells from earlier casts, not this one) is shuffled back in order and the wand recharges after this cast. The cast's own first draws never wrap.</li>
+      <li>Cast delay belongs to the cast that fired. Cast delay from spells inside a trigger payload goes to the payload and is ignored (struck through). Chainsaw sets the running total to 0, written as × 0.</li>
+      <li>Recharge adds up across every cast in the cycle, starting from the wand's base, and applies once when the wand runs out.</li>
+      <li>Mana is paid when a card is drawn, in slot order. A card the wand can't afford is skipped and the next one is drawn. Copies made by Divide By, Alpha and the rest are free.</li>
+      <li>Divide By copies the next card; only the first copy is blocked from drawing. Its copies' cast delay and recharge are undone, then the copied cards are discarded. Mu, Phi and Sigma also undo their copies' cast delay, recharge and mana.</li>
+      <li>Modifiers apply to every projectile in the same shot. Speed multipliers stack by multiplying and cap at 20×. Projectiles also cap at their terminal velocity (usually 1000 px/s).</li>
+      <li>Distance is speed × lifetime in a straight line. It ignores gravity, air friction and walls, so it's the most a projectile can travel. Nolla cuts lifetime to about 3 frames. A payload on an expiration trigger (like Long-Distance Cast) starts where its carrier ends.</li>
+      <li>Limited-use spells lose a charge each cycle they fire. With Unlimited Spells, only spells the game marks as never unlimited still run out.</li>
+      <li>Spell data comes from the game's files (stable branch, March 2023). Damage shows projectile damage only, ×25 as in the game's tooltips; other damage types aren't counted.</li>
+    </ul>
+  </section>
+</div>
+
+<script src="js/gamedata.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/app.js"></script>
