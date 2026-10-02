@@ -245,10 +245,88 @@
   }
 
   /* ---------- results ---------- */
+  /* ---------- per-slot contribution (shown under each slot tile) ---------- */
+  function slotContrib(res) {
+    const by = {};
+    const get = slot => by[slot] = by[slot] || { mana: 0, cd: 0, cdSet: false, cdIgn: 0, cdIgnAny: false, rt: 0, rtIgnAny: false, spread: 0, mult: 1, life: 0, nolla: false, dmg: 0, drawn: 0, copied: 0, copies: 0, skipped: '', projs: 0, trig: '' };
+    res.casts.forEach(cast => {
+      const rootId = cast.rootShot.id;
+      // Cast delay added before the last "set to 0" (Chainsaw) in the main shot is wiped out.
+      let lastSet = -1;
+      const findSet = n => { n.terms.forEach(t => { if (t.stat === 'cd' && t.op === 'set' && !t.reverted && t.shot === rootId) lastSet = Math.max(lastSet, t.seq); }); n.children.forEach(findSet); };
+      findSet(cast.root);
+      const walk = n => {
+        if (n.card && typeof n.card.slot === 'number') {
+          const c = get(n.card.slot);
+          if (n.kind === 'draw') { c.drawn++; c.mana += n.mana || 0; }
+          if (n.kind === 'copy') c.copied++;
+          if (n.kind === 'skip' && !c.drawn) c.skipped = n.reason;
+        }
+        if (n.kind === 'copy' && typeof n.via === 'number') get(n.via).copies++;
+        n.terms.forEach(t => {
+          if (typeof t.slot !== 'number') return;
+          const c = get(t.slot);
+          if (t.stat === 'cd') {
+            if (t.reverted || t.shot !== rootId || (t.op !== 'set' && t.seq < lastSet)) { c.cdIgn += t.v; c.cdIgnAny = true; }
+            else if (t.op === 'set') c.cdSet = true;
+            else c.cd += t.v;
+          } else if (t.stat === 'rt') { if (t.reverted) c.rtIgnAny = true; else if (t.op !== 'set') c.rt += t.v; }
+          else if (t.stat === 'spread') c.spread += t.v;
+          else if (t.stat === 'mult') c.mult *= t.v;
+          else if (t.stat === 'life') { if (t.op === 'nolla') c.nolla = true; else c.life += t.v; }
+          else if (t.stat === 'dmg') c.dmg += t.v;
+        });
+        n.children.forEach(walk);
+      };
+      walk(cast.root);
+      cast.shots.forEach(sh => sh.projs.forEach(p => {
+        if (typeof p.slot !== 'number') return;
+        const c = get(p.slot);
+        c.projs++;
+        if (p.trigger) c.trig = p.trigger;
+      }));
+    });
+    return by;
+  }
+  const sgn = (v, digits) => (v > 0 ? '+' : v < 0 ? '−' : '') + (digits != null ? Math.abs(v).toFixed(digits) : r2(Math.abs(v)));
+  function contribLines(c, sp) {
+    const L = [];
+    if (!c || (!c.drawn && !c.copied)) {
+      L.push(`<span class="dim">${c && c.skipped ? 'skipped: ' + esc(c.skipped) : 'not cast this cycle'}</span>`);
+      return L;
+    }
+    if (c.mana) L.push(`<span class="${c.mana < 0 ? 'gain' : ''}">${c.mana < 0 ? '+' + r2(-c.mana) : '−' + r2(c.mana)} mana</span>`);
+    if (c.cdSet) L.push(`<span>CD → 0</span>`);
+    else if (c.cd) L.push(`<span>CD ${sgn(c.cd / FPS, 2)}s</span>`);
+    if (c.cdIgnAny && !c.cdSet && !c.cd && c.cdIgn) L.push(`<span class="ign" title="Ignored: this cast delay goes to a trigger payload, was undone, or was reset to 0 by a later spell">CD ${sgn(c.cdIgn / FPS, 2)}s</span>`);
+    if (c.rt) L.push(`<span>RT ${sgn(c.rt / FPS, 2)}s</span>`);
+    if (c.mult !== 1) L.push(`<span>speed ×${r2(c.mult)}</span>`);
+    if (c.spread) L.push(`<span>spread ${sgn(c.spread)}°</span>`);
+    if (c.nolla) L.push(`<span>life → 3f</span>`);
+    else if (c.life) L.push(`<span>life ${sgn(c.life)}f</span>`);
+    if (c.dmg) L.push(`<span>dmg ${sgn(c.dmg)}</span>`);
+    if (c.trig) L.push(`<span>payload ${c.trig === 'hit' ? 'on hit' : c.trig === 'timer' ? 'on timer' : 'on expiry'}</span>`);
+    else if (c.projs > 1) L.push(`<span>${c.projs} projectiles</span>`);
+    if (c.copies) L.push(`<span>makes ${c.copies} cop${c.copies === 1 ? 'y' : 'ies'}</span>`);
+    if (c.copied) L.push(`<span class="dim">copied ×${c.copied}</span>`);
+    if (c.drawn > 1) L.push(`<span class="dim">cast ×${c.drawn}</span>`);
+    if (!L.length) L.push(`<span class="dim">${sp && sp.g === 'multicast' ? 'draws more spells' : 'no stat change'}</span>`);
+    return L;
+  }
+  let lastContrib = null;
+  function renderContrib(res) {
+    if (res !== undefined) lastContrib = res ? slotContrib(res) : null;
+    const by = lastContrib;
+    document.querySelectorAll('#slots .sdesc').forEach(el => {
+      const i = +el.dataset.desc;
+      el.innerHTML = by ? contribLines(by[i + 1], byId[state.slots[i]]).join('') : '';
+    });
+  }
+
   function renderResults() {
     const R = document.getElementById('results');
-    if (state.wand.shuffle === 'yes') { R.innerHTML = `<div class="panel"><h2>Results</h2><p class="empty">Shuffle wands draw in random order, so there is no single equation. Switch Shuffle to No to calculate.</p></div>`; return; }
-    if (!state.slots.length) { R.innerHTML = `<div class="panel"><h2>Results</h2><p class="empty">Add spells on the left to see the math for each cast.</p></div>`; return; }
+    if (state.wand.shuffle === 'yes') { renderContrib(null); R.innerHTML = `<div class="panel"><h2>Results</h2><p class="empty">Shuffle wands draw in random order, so there is no single equation. Switch Shuffle to No to calculate.</p></div>`; return; }
+    if (!state.slots.length) { renderContrib(null); R.innerHTML = `<div class="panel"><h2>Results</h2><p class="empty">Add spells to the wand to see the math for each cast.</p></div>`; return; }
     const W = state.wand;
     let res;
     try {
@@ -257,9 +335,11 @@
         slots: state.slots, alwaysCast: state.ac.filter(Boolean), conds: state.conds, unlimited: state.unlimited
       });
     } catch (err) {
+      renderContrib(null);
       R.innerHTML = `<div class="panel"><h2>Results</h2><p class="empty">This wand couldn't be simulated: ${esc(err.message)}. Try removing the last spell you added.</p></div>`;
       return;
     }
+    renderContrib(res);
     const casts = res.casts;
     const total = casts.reduce((s, c) => s + c.wait, 0);
     const manaCycle = casts.reduce((s, c) => s + (c.manaStart - c.manaEnd), 0);
@@ -349,11 +429,12 @@
       const sp = byId[id];
       const lim = sp.uses != null && sp.uses >= 0 && (!state.unlimited || sp.nu);
       return `<li><button type="button" class="slot t-${sp.g}${i === selSlot ? ' sel' : ''}" draggable="true" data-slot="${i}" aria-pressed="${i === selSlot}" title="${esc(`Slot ${i + 1}: ${sp.name} (${groupName[sp.g] || sp.g}, ${sp.mana} mana)`)}">
-        <span class="sn">${i + 1}</span>${lim ? `<span class="su">${sp.uses}</span>` : ''}${iconHtml(sp)}<span class="tn">${esc(label(sp))}</span></button></li>`;
+        <span class="sn">${i + 1}</span>${lim ? `<span class="su">${sp.uses}</span>` : ''}${iconHtml(sp)}<span class="tn">${esc(label(sp))}</span></button><div class="sdesc" data-desc="${i}" aria-live="polite"></div></li>`;
     }).join('') + `<li><button type="button" class="slot add" id="slotAdd" title="Add a spell" aria-label="Add a spell">+</button></li>`;
     document.getElementById('slotCount').textContent = `${state.slots.length} slot${state.slots.length === 1 ? '' : 's'} · drag to reorder, click to edit`;
     renderSlotEdit();
     renderAdd();
+    renderContrib();
   }
   function renderSlotEdit() {
     const box = document.getElementById('slotEdit');
