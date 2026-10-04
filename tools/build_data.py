@@ -147,7 +147,10 @@ for e in entries:
             for x in [y for y in mm.group(1).split(',') if y]:
                 ops.append(['extra', x])
         elif (mm := re.match(r'^add_projectile\(\s*"([^"]+)"\s*\)$', l)):
-            ops.append(['proj', mm.group(1)])
+            # Visual effects (e.g. Summon Taikasauva's sparkle) are spawned with add_projectile
+            # but aren't projectiles, so they're left out of the projectile count.
+            if not mm.group(1).startswith('data/entities/particles/'):
+                ops.append(['proj', mm.group(1)])
         elif (mm := re.match(r'^add_projectile_trigger_hit_world\(\s*"([^"]+)"\s*,\s*(\d+)\s*\)$', l)):
             ops.append(['trig', 'hit', mm.group(1), int(mm.group(2)), 0])
         elif (mm := re.match(r'^add_projectile_trigger_death\(\s*"([^"]+)"\s*,\s*(\d+)\s*\)$', l)):
