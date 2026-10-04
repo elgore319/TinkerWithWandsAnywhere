@@ -48,5 +48,9 @@ check('mana: bomb skipped, spark cast', r.casts[0].root.children.map(c => c.kind
 r = run(['RECHARGE', 'LIGHT_BULLET', 'RECHARGE', 'LIGHT_BULLET']);
 check('recharge: 30 - 20 - 20', r.reloadFrames, -10);
 
+// Visual effects aren't projectiles: Summon Taikasauva fires exactly one.
+r = run(['SUMMON_WANDGHOST']);
+check('taikasauva: one projectile', r.casts[0].rootShot.projs.length, 1);
+
 console.log(failed ? `${failed} failed` : 'all passed');
 process.exit(failed ? 1 : 0);
