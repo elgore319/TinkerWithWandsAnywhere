@@ -128,7 +128,7 @@
       const last = sets[sets.length - 1];
       const { b, a } = split(items, last.seq);
       const before = renderItems(b, fmt, true) || '0';
-      return `<span class="br">(</span>${before}<span class="br">)</span><span class="op"> × </span><span class="term t-${last.group}" title="${esc('Slot ' + last.slot + ': ' + last.name + ' sets cast delay to ' + sec(last.v))}">${last.v ? sec(last.v) + '⁼' : '0'}<sub>${last.slot}</sub></span>` + (a.length ? renderItems(a, fmt, false) : '');
+      return `<span class="br">(</span>${before}<span class="br">)</span><span class="op">${last.v ? ' → ' : ' × '}</span><span class="term t-${last.group}" title="${esc('Slot ' + last.slot + ': ' + last.name + ' sets cast delay to ' + sec(last.v))}">${last.v ? sec(last.v) : '0'}<sub>${last.slot}</sub></span>` + (a.length ? renderItems(a, fmt, false) : '');
     }
     return renderItems(items, fmt, true);
   }
@@ -248,7 +248,7 @@
   /* ---------- per-slot contribution (shown under each slot tile) ---------- */
   function slotContrib(res) {
     const by = {};
-    const get = slot => by[slot] = by[slot] || { mana: 0, cd: 0, cdSet: false, cdIgn: 0, cdIgnAny: false, rt: 0, rtIgnAny: false, spread: 0, mult: 1, life: 0, nolla: false, dmg: 0, drawn: 0, copied: 0, copies: 0, skipped: '', projs: 0, trig: '' };
+    const get = slot => by[slot] = by[slot] || { mana: 0, cd: 0, cdSet: false, cdSetVal: 0, cdIgn: 0, cdIgnAny: false, rt: 0, rtIgnAny: false, spread: 0, mult: 1, life: 0, nolla: false, dmg: 0, drawn: 0, copied: 0, copies: 0, skipped: '', projs: 0, trig: '' };
     res.casts.forEach(cast => {
       const rootId = cast.rootShot.id;
       // Cast delay added before the last "set to 0" (Chainsaw) in the main shot is wiped out.
@@ -268,7 +268,7 @@
           const c = get(t.slot);
           if (t.stat === 'cd') {
             if (t.reverted || t.shot !== rootId || (t.op !== 'set' && t.seq < lastSet)) { c.cdIgn += t.v; c.cdIgnAny = true; }
-            else if (t.op === 'set') c.cdSet = true;
+            else if (t.op === 'set') { c.cdSet = true; c.cdSetVal = t.v; c.cd = 0; }
             else c.cd += t.v;
           } else if (t.stat === 'rt') { if (t.reverted) c.rtIgnAny = true; else if (t.op !== 'set') c.rt += t.v; }
           else if (t.stat === 'spread') c.spread += t.v;
@@ -296,11 +296,11 @@
       return L;
     }
     if (c.mana) L.push(`<span class="${c.mana < 0 ? 'gain' : ''}">${c.mana < 0 ? '+' + r2(-c.mana) : '−' + r2(c.mana)} mana</span>`);
-    if (c.cdSet) L.push(`<span>CD → 0</span>`);
-    else if (c.cd) L.push(`<span>CD ${sgn(c.cd / FPS, 2)}s</span>`);
+    if (c.cdSet) L.push(`<span>CD → ${c.cdSetVal ? sec(c.cdSetVal) + 's' : '0'}</span>`);
+    if (c.cd) L.push(`<span>CD ${sgn(c.cd / FPS, 2)}s</span>`);
     if (c.cdIgnAny && !c.cdSet && !c.cd && c.cdIgn) L.push(`<span class="ign" title="Ignored: this cast delay goes to a trigger payload, was undone, or was reset to 0 by a later spell">CD ${sgn(c.cdIgn / FPS, 2)}s</span>`);
     if (c.rt) L.push(`<span>RT ${sgn(c.rt / FPS, 2)}s</span>`);
-    if (c.mult !== 1) L.push(`<span>speed ×${r2(c.mult)}</span>`);
+    if (c.mult !== 1) L.push(`<span>speed ×${c.mult > 20 ? '20 (cap)' : c.mult < 0.01 ? '<0.01' : r2(c.mult)}</span>`);
     if (c.spread) L.push(`<span>spread ${sgn(c.spread)}°</span>`);
     if (c.nolla) L.push(`<span>life → 3f</span>`);
     else if (c.life) L.push(`<span>life ${sgn(c.life)}f</span>`);
@@ -411,15 +411,28 @@
     sel.innerHTML = optionsHtml(null, document.getElementById('addFind').value);
     if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
   }
-  // Optional spell icons: put the game's gun_actions PNGs in img/spells/ (see README).
-  // Icons that fail to load once are remembered so they aren't requested again.
+  // Spell icons. By default each slot shows an original icon from js/icons.js.
+  // If the game's gun_actions PNGs are in img/spells/ (see README), those are used instead.
+  // One probe image decides which, so a site without PNGs makes no failed requests per slot.
   const ICON_DIR = 'img/spells/';
+  const PROBE_ICON = 'light_bullet';
+  let pngIcons = false;
   const missingIcons = new Set();
-  window.__wandIconFail = img => { missingIcons.add(img.dataset.icon); img.remove(); };
+  window.__wandIconFail = img => {
+    missingIcons.add(img.dataset.icon);
+    const sp = byId[img.dataset.spell];
+    img.insertAdjacentHTML('afterend', sp ? spellIconSvg(sp) : '');
+    img.remove();
+  };
+  try {
+    const probe = new Image();
+    probe.onload = () => { pngIcons = true; renderSlots(); };
+    probe.src = ICON_DIR + PROBE_ICON + '.png';
+  } catch (e) {}
   const iconHtml = sp => {
     const name = sp.icon || sp.id.toLowerCase();
-    if (sp.custom || missingIcons.has(name)) return '';
-    return `<img src="${ICON_DIR}${esc(name)}.png" data-icon="${esc(name)}" alt="" onerror="__wandIconFail(this)">`;
+    if (!pngIcons || sp.custom || missingIcons.has(name)) return spellIconSvg(sp);
+    return `<img src="${ICON_DIR}${esc(name)}.png" data-icon="${esc(name)}" data-spell="${esc(sp.id)}" alt="" onerror="__wandIconFail(this)">`;
   };
   let selSlot = -1;
   function renderSlots() {

@@ -208,8 +208,9 @@ ol.slotrow { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: 
 .slot .sn { position: absolute; top: 2px; left: 4px; font-family: var(--display); font-size: 10px; color: var(--muted); }
 .slot .su { position: absolute; top: 2px; right: 4px; font-family: var(--mono); font-size: 10px; color: var(--other); }
 .slot .tn { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-.slot img { width: 32px; height: 32px; image-rendering: pixelated; }
-.slot img + .tn { -webkit-line-clamp: 1; font-size: 10px; color: var(--muted); }
+.slot img, .slot .gicon { width: 30px; height: 30px; flex: none; image-rendering: pixelated; }
+.slot .gicon { color: var(--c); }
+.slot img + .tn, .slot .gicon + .tn { -webkit-line-clamp: 2; font-size: 10px; color: var(--muted); }
 .slot.add { border-style: dashed; border-top: 1px dashed var(--line); color: var(--muted); font-size: 24px; cursor: pointer; padding: 0; }
 .slot.add:hover { color: var(--gold); border-color: var(--gold); }
 
