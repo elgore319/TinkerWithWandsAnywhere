@@ -1,56 +1,11 @@
-# Noita Wand Calculator
+# Belay download page
 
-Put spells in wand slots and see every cast written out as equations: cast delay, recharge, mana, spread, speed, lifetime, distance and damage, with the slot number under each term.
-
-Open `index.html` in a browser. No build step or server is needed.
-
-## Files
+This repo hosts the download page for Belay, the co-op mod for White Knuckle, on GitHub Pages at the custom domain in `CNAME`.
 
 | Path | What it does |
 | --- | --- |
-| `index.html` | Page markup. Loads the stylesheet and the three scripts in order. |
-| `css/style.css` | All styling. |
-| `js/gamedata.js` | Spell and projectile data (generated, don't edit by hand). Defines `GAME_SPELLS` and `GAME_PROJ`. |
-| `js/engine.js` | The draw engine. `makeEngine(spells, projectiles).simulate(options)` runs one recharge cycle and returns the call tree, every stat change as a labeled term, and the per-shot results. Also defines the special-spell tables (`HANDLED`, `RANDOM_NOTE`). |
-| `js/icons.js` | Original spell icons: 12×12 pixel glyphs and the rules that pick one per spell. |
-| `js/app.js` | The UI: wand stats, the slot row (click to edit, drag to reorder), equation rendering, the Spell stats table, saving to browser storage. |
-| `tools/build_data.py` | Regenerates `js/gamedata.js` from the game's files. |
-| `tests/engine.test.js` | Checks the engine against known wand behavior. |
+| `index.html` | The page. Reads releases, download links and the changelog from `elgore319/Belay_Mod` releases at load (`REPO` near the bottom of the file). |
+| `climber.png` | Hero image. |
+| `LICENSE.txt`, `THIRD-PARTY-NOTICES.txt` | Linked from the page footer. |
 
-Scripts are plain (non-module) files so the page also works when opened straight from disk.
-
-## Spell icons
-
-Each slot shows an original pixel icon from `js/icons.js`, picked from what the spell does: dots for multicasts, chevrons for speed, a target for triggers, ÷2 for Divide By, the letter for the Greek spells, and so on, colored by spell type.
-
-To use the game's own icons instead, copy the PNGs from the game's `data/ui_gfx/gun_actions/` folder (from an unpacked `data.wak`) into `img/spells/`, keeping their file names. The page checks for `img/spells/light_bullet.png` once at load. If it's there, slots use the PNGs, and any spell whose PNG is missing falls back to its generated icon. Each spell's PNG name is its `icon` field in `js/gamedata.js`, or its id in lowercase when there's no `icon` field.
-
-## Spell data
-
-Each spell is a list of ops read from the game's `gun_actions.lua`:
-
-- `['cd', n]` / `['cdSet', n]`: add to or set cast delay (frames)
-- `['rt', n]` / `['rtSet', n]`: add to or set recharge (frames)
-- `['spread', n]`, `['mult', n]`, `['life', n]`, `['dmg', n]`: spread, speed multiplier, lifetime and damage changes
-- `['proj', entity]`: fire a projectile
-- `['trig', kind, entity, draws, timer]`: fire a trigger projectile whose payload draws `draws` cards (`kind` is `hit`, `timer` or `death`)
-- `['draw', n]`: draw n more cards
-- `['nolla']`: lifetime drops to about 3 frames
-
-Spells with logic beyond these ops (Divide By, Greek letters, Requirements, Add Trigger and so on) are handled by name in `js/engine.js`.
-
-Projectile entries are `[speed_min, speed_max, lifetime, lifetime_randomness, terminal_velocity (0 = uncapped), damage, explosion_damage, explosion_radius]`, with damage ×25 as in the game's tooltips.
-
-### Updating after a game patch
-
-1. Get an unpacked copy of the game's `data.wak` (the folder with `scripts/`, `entities/` and `translations/`), for example by cloning https://github.com/vexx32/noita-data or unpacking your own install with a .wak extractor.
-2. Run `python3 tools/build_data.py --data PATH_TO_DATA`. Add `-v` to list spells whose logic the parser didn't recognize; new ones need a handler in `js/engine.js`.
-3. Run `node tests/engine.test.js`.
-
-The bundled data is from the stable branch as of March 2023.
-
-## Tests
-
-```
-node tests/engine.test.js
-```
+The Noita wand calculator that used to live here is kept on the `backup/wand-calculator-2026-11-12` branch. To bring it back, restore that branch's files onto `main`.
