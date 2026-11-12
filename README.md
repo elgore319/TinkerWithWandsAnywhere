@@ -4,7 +4,7 @@ This repo hosts the download page for Belay, the co-op mod for White Knuckle, on
 
 | Path | What it does |
 | --- | --- |
-| `index.html` | The page. Reads releases, download links and the changelog from `elgore319/Belay_Mod` releases at load (`REPO` near the bottom of the file). |
+| `index.html` | The page. Reads releases, download links and the changelog from `BrassWhuckle/Belay` releases at load (`REPO` near the bottom of the file). |
 | `climber.png` | Hero image. |
 | `LICENSE.txt`, `THIRD-PARTY-NOTICES.txt` | Linked from the page footer. |
 
