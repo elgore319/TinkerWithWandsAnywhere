@@ -4,7 +4,7 @@ The Belay installer (Belay-X.Y.Z-installer.zip) includes BepInEx 5.4.23.6
 for Windows x64, unmodified, exactly as published at
 https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.6
 BepInEx and the components it ships keep their own licenses, reproduced
-below. Belay's own license (LICENSE.txt) does not apply to them and does not
+below. Belay's own license (LICENSE.txt, MIT) does not apply to them and does not
 limit your rights under them.
 
   Component                 Files                                   License
